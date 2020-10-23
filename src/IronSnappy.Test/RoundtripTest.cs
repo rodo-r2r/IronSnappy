@@ -1,4 +1,6 @@
 using System.IO;
+using System.Linq;
+using System.Text;
 using Xunit;
 
 namespace IronSnappy.Test
@@ -25,6 +27,31 @@ namespace IronSnappy.Test
             {
                string result = reader.ReadToEnd();
                Assert.Equal(text, result);
+            }
+         }
+      }
+
+      [Fact]
+      public void RoundtripMultichunkGolden()
+      {
+         string text = File.ReadAllText("TestData/Mark.Twain-Tom.Sawyer.txt");
+         string bigText = string.Join("\n", Enumerable.Repeat(text, 50));
+
+         using(MemoryStream memStream = new MemoryStream())
+         {
+            using(Stream zip = Snappy.OpenWriter(memStream))
+            using(StreamWriter writer = new StreamWriter(zip))
+            {
+               writer.Write(bigText);
+            }
+
+            memStream.Seek(0, SeekOrigin.Begin);
+
+            using(Stream zip = Snappy.OpenReader(memStream))
+            using(StreamReader reader = new StreamReader(zip))
+            {
+               string result = reader.ReadToEnd();
+               Assert.Equal(bigText, result);
             }
          }
       }

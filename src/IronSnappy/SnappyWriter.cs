@@ -145,7 +145,7 @@ namespace IronSnappy
             _obuf[Snappy.MagicChunk.Length + 6] = (byte)(checksum >> 16);
             _obuf[Snappy.MagicChunk.Length + 7] = (byte)(checksum >> 24);
 
-            _parent.Write(_obuf, obufStart, obufEnd);
+            _parent.Write(_obuf, obufStart, obufEnd - obufStart);
 
             if(chunkType == Snappy.ChunkTypeUncompressedData)
             {
