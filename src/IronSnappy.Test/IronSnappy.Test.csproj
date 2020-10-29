@@ -33,6 +33,9 @@
     <None Update="TestData\Mark.Twain-Tom.Sawyer.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+     <None Update="TestData\Mark.Twain-Tom.Sawyer.txt.snappy">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
   </ItemGroup>
 
 </Project>

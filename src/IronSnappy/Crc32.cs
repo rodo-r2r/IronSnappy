@@ -13,9 +13,10 @@ namespace IronSnappy
    /// interface or remember that the result of one Compute call needs to be ~ (XOR) before
    /// being passed in as the seed for the next Compute call.
    /// </remarks>
-   static class Crc32
+   static internal class Crc32
    {
-      const uint DefaultPolynomial = 0xedb88320u;
+      // Use CRC-32C (Castagnoli) by default.
+      const uint DefaultPolynomial = 0x82f63b78;
       const uint DefaultSeed = 0xffffffffu;
 
       static uint[] defaultTable;
@@ -27,7 +28,11 @@ namespace IronSnappy
 
       public static uint Compute(ReadOnlySpan<byte> buffer)
       {
-         return ~CalculateHash(InitializeTable(DefaultPolynomial), DefaultSeed, buffer);
+         uint crc = ~CalculateHash(InitializeTable(DefaultPolynomial), DefaultSeed, buffer);
+         // Compute() implements the checksum specified in section 3 of
+         // https://github.com/google/snappy/blob/master/framing_format.txt
+         // and implemented in https://github.com/golang/snappy/blob/196ae77b8a26000fa30caa8b2b541e09674dbc43/snappy.go#L95
+         return ((crc >> 15) | (crc << 17)) + 0xa282ead8;
       }
 
       public static uint Compute(uint seed, ReadOnlySpan<byte> buffer)
@@ -37,7 +42,8 @@ namespace IronSnappy
 
       public static uint Compute(uint polynomial, uint seed, ReadOnlySpan<byte> buffer)
       {
-         return ~CalculateHash(InitializeTable(polynomial), seed, buffer);
+         uint crc = ~CalculateHash(InitializeTable(polynomial), seed, buffer);
+         return ((crc >> 15) | (crc << 17)) + 0xa282ead8;
       }
 
       static uint[] InitializeTable(uint polynomial)
