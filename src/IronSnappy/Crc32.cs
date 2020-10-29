@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Force.Crc32;
 
 namespace IronSnappy
 {
@@ -13,8 +14,10 @@ namespace IronSnappy
    /// interface or remember that the result of one Compute call needs to be ~ (XOR) before
    /// being passed in as the seed for the next Compute call.
    /// </remarks>
-   static internal class Crc32
+   public static class Crc32
    {
+      public static bool UseFastCrc = false;
+
       // Use CRC-32C (Castagnoli) by default.
       const uint DefaultPolynomial = 0x82f63b78;
       const uint DefaultSeed = 0xffffffffu;
@@ -29,6 +32,7 @@ namespace IronSnappy
       public static uint Compute(ReadOnlySpan<byte> buffer)
       {
          uint crc = ~CalculateHash(InitializeTable(DefaultPolynomial), DefaultSeed, buffer);
+
          // Compute() implements the checksum specified in section 3 of
          // https://github.com/google/snappy/blob/master/framing_format.txt
          // and implemented in https://github.com/golang/snappy/blob/196ae77b8a26000fa30caa8b2b541e09674dbc43/snappy.go#L95
@@ -71,6 +75,11 @@ namespace IronSnappy
 
       static uint CalculateHash(uint[] table, uint seed, ReadOnlySpan<byte> buffer)
       {
+         if(UseFastCrc)
+         {
+            return ~Crc32CAlgorithm.Compute(buffer.ToArray()); // TODO: Unnecessary copy? Or is compiler smart?
+         }
+
          uint hash = seed;
          for(int i = 0; i < buffer.Length; i++)
             hash = (hash >> 8) ^ table[buffer[i] ^ hash & 0xff];
