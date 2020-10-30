@@ -8,18 +8,21 @@ namespace IronSnappy.Benchmark
    {
       static void Main(string[] args)
       {
-         // Debug failures.
-         var bench = new CrcBenchmark();
-         for(int i = 0; i < 1000; i++)
-         {
-            Console.WriteLine($"i={i}");
-            bench.DecodeFastBench();
-            bench.DecodeIronBench();
-         }
 
+         //// Debug failures.
+         //var bench = new CrcBenchmark();
+         //for(int i = 0; i < 1000; i++)
+         //{
+         //   Console.WriteLine($"i={i}");
+         //   bench.DecodeFastBench();
+         //   bench.DecodeIronBench();
+         //}
+
+         //var bench = new CrcBenchmark();
          //bench.DecodeFastBenchClone();
          //bench.DecodeIronBenchClone();
          //bench.DecodeFastBenchClone();
+         //bench.DecodeSnappyNetBench();
 
          // Crc32.UseBothCrc = true;
 
@@ -33,7 +36,7 @@ namespace IronSnappy.Benchmark
          // BenchmarkRunner.Run<CrcBenchmark>(new DebugInProcessConfig());
 
          // Run.
-         // BenchmarkRunner.Run<CrcBenchmark>();
+         BenchmarkRunner.Run<CrcBenchmark>();
       }
    }
 }

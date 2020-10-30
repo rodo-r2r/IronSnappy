@@ -2,6 +2,7 @@ using System.IO;
 using Force.Crc32;
 using BenchmarkDotNet.Attributes;
 using System.IO.Compression;
+using Snappy;
 
 namespace IronSnappy.Benchmark
 {
@@ -67,18 +68,42 @@ private static readonly int _bigMultiplier = 3;
 | RoundtripIronBenchBig | 14,884.1 ms |  29.72 ms | 27.80 ms | 13.34 |    0.07 |  96000.0000 |     - |     - |  9895273392 B |
 | RoundtripFastBenchBig | 10,430.1 ms |  87.30 ms | 81.66 ms |  9.35 |    0.10 | 482000.0000 |     - |     - | 13135080680 B |
 | RoundtripGzipBenchBig | 41,181.9 ms | 105.10 ms | 93.17 ms | 36.91 |    0.19 |           - |     - |     - |  7507466128 B |    
+
+
+private readonly byte[] _rawBuffer = new byte[] { 1, 2, 3, 4, 5 };
+private static readonly int _bigMultiplier = 100;
+   - Snappy.Net (native) is way faster for tiny (5 bye) files.
+    
+|               Method |      Mean |     Error |    StdDev |    Gen 0 |   Gen 1 |   Gen 2 | Allocated |
+|--------------------- |----------:|----------:|----------:|---------:|--------:|--------:|----------:|
+|      DecodeIronBench | 22.107 us | 0.1216 us | 0.1078 us | 124.9695 | 83.2520 | 41.6565 | 273.12 KB |
+|      DecodeFastBench | 22.275 us | 0.2707 us | 0.2399 us | 124.9695 | 83.2520 | 41.6565 | 273.12 KB |
+|      DecodeGzipBench |  6.290 us | 0.0347 us | 0.0324 us |  90.9042 |       - |       - | 121.59 KB |
+| DecodeSnappyNetBench |  4.082 us | 0.0164 us | 0.0154 us |  62.4924 |       - |       - |  81.05 KB |    
+
+
+private static readonly byte[] _rawBuffer = File.ReadAllBytes(@"c:\src\rome2rio-core\Store.TransitData\rome2rio_transit.eu.r2r.raw");
+   - Snappy.Net (native) is way faster for big (500mb) files.
+|               Method |       Mean |    Error |   StdDev |       Gen 0 | Gen 1 | Gen 2 | Allocated |
+|--------------------- |-----------:|---------:|---------:|------------:|------:|------:|----------:|
+|      DecodeIronBench | 3,575.8 ms | 16.76 ms | 14.86 ms | 202000.0000 |     - |     - |   2.75 GB |
+|      DecodeFastBench | 2,795.6 ms | 19.48 ms | 18.23 ms | 606000.0000 |     - |     - |   3.26 GB |
+|      DecodeGzipBench | 4,539.2 ms | 10.86 ms | 10.16 ms |  49000.0000 |     - |     - |   1.81 GB |
+| DecodeSnappyNetBench |   840.8 ms | 16.53 ms | 25.74 ms |           - |     - |     - |   1.75 GB |
+   
+
     */
    [MemoryDiagnoser]
    public class CrcBenchmark
    {
-      // private readonly byte[] _rawBuffer = new byte[] { 1, 2, 3, 4, 5 };
-      // private readonly int _bigMultiplier = 100;
+      //private readonly byte[] _rawBuffer = new byte[] { 1, 2, 3, 4, 5 };
+      //private readonly int _bigMultiplier = 100;
 
-      private static readonly byte[] _rawBuffer = File.ReadAllBytes(@"c:\src\IronSnappy\src\IronSnappy.Test\TestData\Mark.Twain-Tom.Sawyer.txt");
-      private static readonly int _bigMultiplier = 10;
+      //private static readonly byte[] _rawBuffer = File.ReadAllBytes(@"c:\src\IronSnappy\src\IronSnappy.Test\TestData\Mark.Twain-Tom.Sawyer.txt");
+      //private static readonly int _bigMultiplier = 10;
 
-      //private static readonly byte[] _rawBuffer = File.ReadAllBytes(@"c:\src\rome2rio-core\Store.TransitData\rome2rio_transit.eu.r2r.raw");
-      //private static readonly int _bigMultiplier = 3;
+      private static readonly byte[] _rawBuffer = File.ReadAllBytes(@"c:\src\rome2rio-core\Store.TransitData\rome2rio_transit.eu.r2r.raw");
+      private static readonly int _bigMultiplier = 0;  // todo: 3
 
       private readonly byte[] _decodedBytes;
       private readonly byte[] _decodedBytesBig;
@@ -101,8 +126,8 @@ private static readonly int _bigMultiplier = 3;
          _encodedBytesBigGz = EncodeStreamGz(_decodedBytesBig);
       }
 
-   #region helpers
-   private static byte[] RepeatArray(byte[] array, int count)
+      #region helpers
+      private static byte[] RepeatArray(byte[] array, int count)
       {
          byte[] ret = new byte[array.Length * count];
          for(int i = 0; i < count; i++)
@@ -136,6 +161,18 @@ private static readonly int _bigMultiplier = 3;
          }
       }
 
+      private static byte[] DecodeStreamSnappyNet(byte[] encoded)
+      {
+         using(MemoryStream encodedStream = new MemoryStream(encoded))
+         using(Stream snappyStream = new SnappyStream(encodedStream, CompressionMode.Decompress))
+         using(MemoryStream decodedStream = new MemoryStream())
+         {
+            snappyStream.CopyTo(decodedStream);
+            // snappyStream.Flush();
+            return decodedStream.ToArray();
+         }
+      }
+
       private static byte[] EncodeStreamGz(byte[] decoded)
       {
          using(MemoryStream encodedStream = new MemoryStream())
@@ -160,6 +197,7 @@ private static readonly int _bigMultiplier = 3;
          }
       }
       #endregion
+
 
       #region CRC_Bench
       // CRC benchmarks.
@@ -256,6 +294,13 @@ private static readonly int _bigMultiplier = 3;
       }
 
       [Benchmark(Baseline = false)]
+      public void DecodeSnappyNetBench()
+      {
+         DecodeStreamSnappyNet(_encodedBytes);
+      }
+
+
+      [Benchmark(Baseline = false)]
       public void DecodeIronBenchBig()
       {
          Crc32.UseFastCrc = false;
@@ -324,5 +369,6 @@ private static readonly int _bigMultiplier = 3;
          byte[] redecoded = DecodeStreamGz(encoded);
       }
       #endregion
+
    }
 }
